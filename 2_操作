@@ -1,0 +1,243 @@
+
+2、查询学生总人数：
+    select count(sid) from student;
+3、查询‘生物’,‘物理’成绩都及格的学生id和姓名：empty set
+    select sid,sname from student where sid=
+        ((select student_id from score where score>=60 and course_id=(select cid from course where cname='生物'))=
+        (select student_id from score where score>=60 and course_id=(select cid from course where cname='物理')));
+4、查询每个年级的班级数，取出班级数最多的前三个年级
+    select gname,grade_class_num from class_grade as t1 inner join
+        (select grade_id,count(grade_id) as grade_class_num from class group by grade_id) as t2
+        on t1.gid = t2.grade_id;
+    select gname,grade_class_num from class_grade as t1 inner join
+        (select grade_id,count(grade_id) as grade_class_num from class group by grade_id) as t2
+        on t1.gid = t2.grade_id
+        order by grade_class_num desc limit 3;
+
+5、查询平均成绩最高和最低的学生id和姓名以及平均成绩
+    select t1.sid,t1.sname,t2.avg_score_max from student as t1 inner join
+        (select student_id,avg(score) as avg_score_max from score group by student_id) as t2
+        on t1.sid = t2.student_id
+        order by t2.avg_score_max desc limit 1;
+    select t1.sid,t1.sname,t2.avg_score_min from student as t1 inner join
+        (select student_id,avg(score) as avg_score_min from score group by student_id) as t2
+        on t1.sid = t2.student_id
+        order by t2.avg_score_min limit 1;
+6、查询每个年级的人数
+    select t3.gname,t4.student_num from class_grade as t3 inner join
+        (select t1.grade_id,sum(class_std_num) as student_num from class as t1 inner join
+            (select class_id,count(class_id) as class_std_num from student group by class_id) as t2
+            on t1.cid = t2.class_id
+            group by t1.grade_id) as t4
+        on t3.gid = t4.grade_id;
+7、查询每位学生的学号，姓名，选课数，平均成绩
+    select t1.sid,t1.sname,t2.course_num,avg_score from student as t1 left join
+        (select student_id,count(student_id) as course_num,avg(score) as avg_score
+            from score group by student_id) as t2
+        on t1.sid = t2.student_id;
+8、查询学生编号为‘2’的学生姓名，成绩最高的课程名、成绩最低的课程名及分数
+    select t4.sname,t3.cname,t4.max_score from course as t3 inner join
+        (select t1.sname,t2.course_id,t2.max_score from student as t1 inner join
+            (select student_id,course_id,score as max_score from score
+            where student_id=2 order by score desc limit 1) as t2
+            on t1.sid = t2.student_id) as t4
+        on t3.cid = t4.course_id;
+    select t4.sname,t3.cname,t4.min_score from course as t3 inner join
+        (select t1.sname,t2.course_id,t2.min_score from student as t1 inner join
+            (select student_id,course_id,score as min_score from score
+            where student_id=2 order by score limit 1) as t2
+            on t1.sid = t2.student_id) as t4
+        on t3.cid = t4.course_id;
+9、查询姓‘李’的老师的个数和所带班级数
+    select count(tname) Mr_Li_num from teacher where tname like '李%';
+    select t1.tname,t2.cls_num from teacher as t1 inner join
+        (select t_id,sum(c_id) as cls_num from teacher2cls group by t_id) as t2
+        on t1.tid = t2.t_id
+        where tname like '李%';
+10、查询班级数小于5的年级id和年级名
+    select t1.gid,t2.class_num from class_grade as t1 inner join
+        (select grade_id,count(grade_id) as class_num from class group by grade_id
+            having class_num < 5) as t2
+        on t1.gid = t2.grade_id;
+11、查询班级信息，包括班级id、班级名称、年级、年级级别（低中高）
+    select t1.cid,t1.caption,t2.gname,
+        (case t1.grade_id
+         when 1 then '低'
+         when 2 then '低'
+         when 3 then '中'
+         when 4 then '中'
+         when 5 then '高'
+         when 6 then '高'
+         else 0
+         end
+         )年级级别
+        from class as t1 left join class_grade as t2
+        on t1.grade_id = t2.gid
+        ;
+12、查询学过‘张三’老师2门课以上的同学的学号、姓名
+    select sid,sname from student where sid in
+        (select student_id from score where course_id in
+            (select cid from course where teacher_id =
+                (select tid from teacher where tname='张三'))
+            group by student_id having count(student_id)>1);
+13、查询教授课程超过2们的老师的id和姓名
+    select tid,tname from teacher where tid in
+        (select teacher_id from course group by teacher_id
+            having count(teacher_id)>1);
+14、查询学过编号1课程和编号2课程的同学的学号、姓名
+    select sid,sname from student where sid in
+        (select student_id from score where course_id in (1,2)
+            group by student_id having count(student_id)>1);
+15、查询没有带过高年级的老师id和姓名
+    select tid,tname from teacher where tid not in
+        (select distinct t_id from teacher2cls where c_id in
+            (select cid from class where grade_id in (5,6)));
+
+16、查询学过‘张三’老师所教的所有课的同学的学号
+    select sid,sname from student where class_id in
+        (select c_id from teacher2cls where t_id =
+            (select tid from teacher where tname='张三'));
+
+17、查询带过超过2个班级的老师的id和姓名
+    select * from teacher where tid in
+        (select t_id from teacher2cls group by t_id having count(t_id)>1);
+
+18、查询课程编号2的成绩比课程编号1课程低的所有同学的学号、姓名
+
+19、查询所带班级数最多的老师id和姓名
+    select tid,tname from teacher where tid =
+        (select t_id from teacher2cls group by t_id order by count(t_id) desc limit 1);
+
+20、查询有课程成绩小于60的同学的学号、姓名
+    select sid,sname from student where sid in
+        (select distinct student_id from score where score < 60);
+
+21、查询没有学全所有课的同学的学号、姓名
+    select student_id,sname from score left join
+        student
+        on score.student_id = student.sid
+        group by student_id having count(course_id) = (select count(cid) from course);
+
+22、查询至少有一门课与学号为‘1’的同学所学相同的同学的学号和姓名
+    select sid,sname from student where sid in
+        (select distinct student_id from score where course_id in
+            (select course_id from score where student_id = 1) and student_id != 1);
+
+23、查询至少学过学号为‘1’同学所选课程中任意一门课的其他同学学号和姓名
+    elect sid,sname from student where sid in
+        (select distinct student_id from score where course_id in
+            (select course_id from score where student_id = 1) and student_id != 1);
+
+24、查询和‘2’号同学学习的课程完全相同的其他同学的学号和姓名
+    select sid,sname from student where sid in
+        (select student_id from score where course_id in
+            (select course_id from score where student_id = 2)
+            and student_id != 2
+            group by student_id having count(course_id) =
+                (select count(course_id) from score where student_id = 2 group by student_id));
+
+25、删除学习‘张三’老师课的score表记录
+    delete from score where sid in
+        (select sid from score where course_id in
+            (select cid from course where teacher_id =
+                (select tid from teacher where tname='张三')));
+
+26、向score表中插入一些记录，这些记录要求符合<1>没有上过编号2课程的同学学号,<2>插入2号课程的平均成绩
+    insert into score(student_id, course_id, score) select sid,2,(select avg(score) from score where course_id = 2)
+        from student where sid not in (select student_id from score where course_id = 2)
+
+27、按平均成绩从低到高显示所有学生的语文、数学、英语三门的课程成绩，按学生ID，语文，数学，英语，有效课程数，有效平均分显示
+
+
+28、查询各科成绩最高和最低的分，显示形式：课程ID，最高分，最低分
+    select course_id, max(score) as max_num, min(score) as min_num from score group by course_id;
+29、按各科平均成绩从低到高和及格率的百分数从高到低顺序
+    select course_id, avg(score) as avg_num,sum(case when score.score > 60 then 1 else 0 END)/count(1)*100 as percent
+        from score group by course_id order by avg_num asc,percent desc;
+30、课程平均分从高到低显示（现实任课老师）
+    select t4.cname,t4.avg_score,t3.tname from teacher as t3 inner join
+        (select t1.cid,t1.cname,t2.avg_score,t1.teacher_id from course as t1 inner join
+            (select course_id,avg(score) as avg_score from score group by course_id) as t2
+            on t1.cid = t2.course_id) as t4
+        on t3.tid = t4.teacher_id order by t4.avg_score desc;
+31、查询各科成绩前三名的记录（不考虑并列）
+
+
+32、查询每门课程被选修的学生数
+    select course_id,count(course_id) from score group by course_id;
+
+33、查询选修了2门以上课程的全部学生的学号和姓名
+    select student_id,count(student_id) from score group by student_id having count(student_id)>1;
+
+34、查询男生、女生的人数，倒序排列
+    select gender,count(gender) from student group by gender order by count(gender) desc;
+35、查询姓张的学生名单
+    select sname from student where sname like '张%';
+36、查询同名同姓学生名单，并统计人数
+    select sname,count(sname) from student group by sname having count(sname)>1;
+37、查询每门课程的平均成绩，结果按平均成绩升序排列，并列时按课程号降序
+    select cid,cname,avg_score from course as t1 inner join
+        (select course_id,avg(score) as avg_score from score group by course_id) as t2
+        on t1.cid = t2.course_id
+        order by avg_score,cid desc;
+38、查询课程名称为数学，且分数低于60的学生姓名和分数
+    select t1.sname,t2.score from student as t1 inner join
+        (select student_id,score from score where course_id =
+            (select cid from course where cname = '数学')
+            having score < 60) as t2
+        on t1.sid = t2.student_id;
+39、查询课程编号为3且课程成绩在80分以上的学生的学号和姓名
+    select sid,sname from student where sid in
+        (select student_id from score where course_id = 3 and score>80);
+
+40、求选修了课程的学生人数
+    select count(distinct student_id)  from score;
+41、查询选修王五老师课的学生中，成绩最高和最低的学生姓名和成绩
+    select t1.sname,t2.max_score from student as t1 inner join
+        (select student_id,max(score) as max_score from score where course_id in
+            (select cid from course where teacher_id =
+                (select tid from teacher where tname = '王五'))) as t2
+        on t1.sid = t2.student_id;
+
+    select t1.sname,t2.min_score from student as t1 inner join
+        (select student_id,min(score) as min_score from score where course_id in
+            (select cid from course where teacher_id =
+                (select tid from teacher where tname = '王五'))) as t2
+        on t1.sid = t2.student_id;
+
+42、查询各个课程及相应的选修人数
+    select cname,select_num from course as t1 left join
+        (select course_id,count(course_id) as select_num from score group by course_id) as t2
+        on t2.course_id = t1.cid;
+
+43、查询不同课程但成绩相同的学生的学号、课程号、学生成绩
+    select t1.student_id,t1.course_id,t1.score from score as t1, score as t2
+        where t1.score = t2.score and t1.student_id = t2.student_id and t1.course_id != t2.course_id;
+
+44、查询每门课程成绩最好的前两名学生id和姓名
+
+45、检索至少选修两门课程的学生学号
+    select student_id from score group by student_id having count(student_id)>1;
+
+46、查询没有学生选修的课程的课程号和课程名
+    select cid,cname from course where cid not in
+        (select distinct course_id from score);
+
+47、查询没带过任何班级的老师id和姓名
+    select tid,tname from teacher where tid not in
+        (select distinct t_id from teacher2cls);
+
+48、查询有两门以上课程超过80的学生id以及其平均成绩
+    select student_id,avg(score) from score where score > 80 group by student_id
+        having count(student_id)>1;
+
+49、检索3课程分数小于60，按分数降序排列的同学学号
+    select student_id from score where course_id = 3 and score < 60 order by score desc;
+
+50、删除编号为2的同学的1课程的成绩
+    delete from score where student_id=2 and course_id=1;
+51、查询同时选修了物理课和生物课的学生id和姓名
+    select sid,sname from student where sid in
+        (select student_id from score where course_id in
+            (select cid from course where cname = '生物' or cname = '物理')
+            group by student_id having count(student_id)>1);
